@@ -180,6 +180,9 @@ app.post("/uplink", (req, res) => {
   let deviceId = req.body.device;
   let data = req.body.data;
 
+  //Remove padding de 0 existente à frente do valor.
+  data = data.replace(/^0+/g, '');
+
   let messages = db.collection("messages");
 
   messages.add({
@@ -188,6 +191,10 @@ app.post("/uplink", (req, res) => {
   });
 
   res.status(200).send("ok");
+});
+
+app.post("/messages", (req, res) => {
+    
 });
 
 const port = process.env.PORT || 3000;
