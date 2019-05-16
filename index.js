@@ -70,29 +70,7 @@ app.post("/sigfoxDevice", (req, res) => {
     });
 });
 
-app.post("/deviceMessages", (req, res) => {
-  var deviceId = req.body.deviceId;
-  var auth = req.body.auth;
-
-  axios
-    .get(sigfoxApiUrl + "/v2/devices/" + deviceId + "/messages", {
-      headers: {
-        Authorization: "Basic " + auth
-      }
-    })
-    .then(resp => {
-      var data = resp.data;
-      res.status(200).json(data);
-    })
-    .catch(err => {
-      console.log(err);
-      res.status(500).json({
-        error: "Não foi possível buscar as mensagens do device informado."
-      });
-    });
-});
-
-app.post("/sigfoxCredentials", (req, res) => {
+app.post("/credentials", (req, res) => {
   let username = req.body.login;
   let password = req.body.password;
 
@@ -110,7 +88,7 @@ app.post("/sigfoxCredentials", (req, res) => {
       .then(snapshot => {
         if (snapshot.size > 0) {
           snapshot.forEach(doc => {
-            //Gera o token de acesso para o sistema
+            //TODO: Gerar um token de acesso, para validar nas requisições futuras.
             res.status(200).json({
               apiUser: doc.get("apiUser"),
               apiPassword: doc.get("apiPassword"),
@@ -189,8 +167,8 @@ app.post("/uplink", (req, res) => {
 
   messages.add({
     deviceId: deviceId,
-    data: data,
-    time: time
+    data: Number(data),
+    time: Number(time)
   });
 
   res.status(200).send("ok");
@@ -199,11 +177,41 @@ app.post("/uplink", (req, res) => {
 app.post("/messages", (req, res) => {
   let deviceId = req.body.deviceId;
   let messages = db.collection("messages");
+  let response = [];
 
   //Realiza uma query buscando as mensagens com base no id do device.
   var messagesQuery = messages.where("deviceId", "==", deviceId);
 
+  messagesQuery
+    .get()
+    .then(snapshot => {
+      if (snapshot.size > 0) {
+        snapshot.forEach(doc => {
+          response.push({
+            time: doc.get("time"),
+            data: doc.get("data")
+          });
+        });
+      }
+      res.status(200).json(
+        response.sort((a, b) => {
+          if (a.time < b.time) {
+            return -1;
+          }
+          if (a.time > b.time) {
+            return 1;
+          }
 
+          return 0;
+        })
+      );
+    })
+    .catch(err => {
+      console.log("Error getting messages from device.", err);
+      res.status(500).json({
+        error: "Não foi possível buscar as mensagens do dispositivo informado"
+      });
+    });
 });
 
 const port = process.env.PORT || 3000;
