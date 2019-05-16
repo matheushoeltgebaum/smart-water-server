@@ -169,6 +169,10 @@ app.post("/token", (req, res) => {
   }
 });
 
+app.get('/', (req, res) => {
+    res.status(200).send("Welcome to the Smart Water Server!");
+});
+
 const port = process.env.PORT || 3000;
 
 //Instancia o servidor.
