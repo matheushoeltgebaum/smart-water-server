@@ -180,6 +180,7 @@ app.get("/", (req, res) => {
 app.post("/uplink", (req, res) => {
   let deviceId = req.body.device;
   let data = req.body.data;
+  let time = req.body.time;
 
   //Remove padding de 0 existente à frente do valor.
   data = data.replace(/^0+/g, "");
@@ -188,7 +189,8 @@ app.post("/uplink", (req, res) => {
 
   messages.add({
     deviceId: deviceId,
-    data: data
+    data: data,
+    time: time
   });
 
   res.status(200).send("ok");
@@ -201,7 +203,7 @@ app.post("/messages", (req, res) => {
   //Realiza uma query buscando as mensagens com base no id do device.
   var messagesQuery = messages.where("deviceId", "==", deviceId);
 
-  
+
 });
 
 const port = process.env.PORT || 3000;
