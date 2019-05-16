@@ -3,13 +3,21 @@ const express = require("express"),
   http = require("http"),
   axios = require("axios");
 
-const serviceAccount = require("./config/smart-water-server-admin.json");
+//const serviceAccount = require("./config/smart-water-server-admin.json");
 
 //Inicializa o App Firebase Admin
-admin.initializeApp({
+/*admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
   databaseURL: "https://smart-water-5839d.firebaseio.com"
-});
+});*/
+
+admin.initializeApp({
+    credential: admin.credential.cert({
+        "private_key": process.env.FIREBASE_PRIVATE_KEY,
+        "client_email": process.env.FIREBASE_CLIENT_EMAIL.replace(/\\n/g, '\n'),
+    }),
+    databaseURL: "https://smart-water-5839d.firebaseio.com"
+  });
 
 const app = express();
 
