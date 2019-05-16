@@ -11,6 +11,8 @@ const express = require("express"),
   databaseURL: "https://smart-water-5839d.firebaseio.com"
 });*/
 
+require('dotenv').config();
+
 admin.initializeApp({
     credential: admin.credential.cert({
         "type": process.env.FIREBASE_TYPE,
