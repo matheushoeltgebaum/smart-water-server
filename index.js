@@ -113,7 +113,8 @@ app.post("/sigfoxCredentials", (req, res) => {
             //Gera o token de acesso para o sistema
             res.status(200).json({
               apiUser: doc.get("apiUser"),
-              apiPassword: doc.get("apiPassword")
+              apiPassword: doc.get("apiPassword"),
+              deviceId: doc.get("deviceId")
             });
           });
         } else {
@@ -181,7 +182,7 @@ app.post("/uplink", (req, res) => {
   let data = req.body.data;
 
   //Remove padding de 0 existente à frente do valor.
-  data = data.replace(/^0+/g, '');
+  data = data.replace(/^0+/g, "");
 
   let messages = db.collection("messages");
 
@@ -194,7 +195,13 @@ app.post("/uplink", (req, res) => {
 });
 
 app.post("/messages", (req, res) => {
-    
+  let deviceId = req.body.deviceId;
+  let messages = db.collection("messages");
+
+  //Realiza uma query buscando as mensagens com base no id do device.
+  var messagesQuery = messages.where("deviceId", "==", deviceId);
+
+  
 });
 
 const port = process.env.PORT || 3000;
