@@ -180,27 +180,14 @@ app.post("/uplink", (req, res) => {
   let deviceId = req.body.device;
   let data = req.body.data;
 
-  let users = db.collection("users");
+  let messages = db.collection("messages");
 
-  //Realiza uma query buscando o usuário pelo id do dispositivo vinculado.
-  var deviceQuery = users.where("deviceId", "==", deviceId).limit(1);
+  messages.add({
+    deviceId: deviceId,
+    data: data
+  });
 
-  deviceQuery
-    .get()
-    .then(snapshot => {
-      if (snapshot.size > 0) {
-        snapshot.forEach(doc => {
-            doc.collection('messages').add({
-                data: data
-            });
-            res.status(200).send("ok");
-        });
-      }
-    })
-    .catch(err => {
-      console.log("Error when trying to save message in the database.", err);
-      res.status(500).send({ error: "Não foi possível salvar a mensagem." });
-    });
+  res.status(200).send("ok");
 });
 
 const port = process.env.PORT || 3000;
