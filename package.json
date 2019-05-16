@@ -2,7 +2,7 @@
   "name": "smart-water-server",
   "version": "1.0.0",
   "engines": {
-      "node": "11.11.0"
+    "node": "11.11.0"
   },
   "description": "",
   "main": "index.js",
