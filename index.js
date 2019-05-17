@@ -11,23 +11,24 @@ const express = require("express"),
   databaseURL: "https://smart-water-5839d.firebaseio.com"
 });*/
 
-require('dotenv').config();
+require("dotenv").config();
 
 admin.initializeApp({
-    credential: admin.credential.cert({
-        "type": process.env.FIREBASE_TYPE,
-        "project_id": process.env.FIREBASE_PROJECT_ID,
-        "private_key_id": process.env.FIREBASE_PRIVATE_KEY_ID,
-        "private_key": process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
-        "client_email": process.env.FIREBASE_CLIENT_EMAIL,
-        "client_id": process.env.FIREBASE_CLIENT_ID,
-        "auth_uri": process.env.FIREBASE_AUTH_URI,
-        "token_uri": process.env.FIREBASE_TOKEN_URI,
-        "auth_provider_x509_cert_url": process.env.FIREBASE_AUTH_PROVIDER_X509_CERT_URL,
-        "client_x509_cert_url": process.env.FIREBASE_CLIENT_X509_CERT_URL
-    }),
-    databaseURL: "https://smart-water-5839d.firebaseio.com"
-  });
+  credential: admin.credential.cert({
+    type: process.env.FIREBASE_TYPE,
+    project_id: process.env.FIREBASE_PROJECT_ID,
+    private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
+    private_key: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n"),
+    client_email: process.env.FIREBASE_CLIENT_EMAIL,
+    client_id: process.env.FIREBASE_CLIENT_ID,
+    auth_uri: process.env.FIREBASE_AUTH_URI,
+    token_uri: process.env.FIREBASE_TOKEN_URI,
+    auth_provider_x509_cert_url:
+      process.env.FIREBASE_AUTH_PROVIDER_X509_CERT_URL,
+    client_x509_cert_url: process.env.FIREBASE_CLIENT_X509_CERT_URL
+  }),
+  databaseURL: "https://smart-water-5839d.firebaseio.com"
+});
 
 const app = express();
 
@@ -171,16 +172,36 @@ app.post("/token", (req, res) => {
   }
 });
 
-app.get('/', (req, res) => {
-    res.status(200).send("Welcome to the Smart Water Server!");
+app.get("/", (req, res) => {
+  res.status(200).send("Welcome to the Smart Water Server!");
 });
 
-app.post('/uplink', (req, res) => {
-    let data = req.body;
-    console.log(data);
-    res.status(200).send('ok');
-});
+app.post("/uplink", (req, res) => {
+  let deviceId = req.body.deviceId;
+  let data = req.body.data;
 
+  let users = db.collection("users");
+
+  //Realiza uma query buscando o usuário pelo id do dispositivo vinculado.
+  var deviceQuery = users.where("deviceId", "==", deviceId).limit(1);
+
+  deviceQuery
+    .get()
+    .then(snapshot => {
+      if (snapshot.size > 0) {
+        snapshot.forEach(doc => {
+            doc.collection('messages').add({
+                data: data
+            });
+            res.status(200).send("ok");
+        });
+      }
+    })
+    .catch(err => {
+      console.log("Error when trying to save message in the database.", err);
+      res.status(500).send({ error: "Não foi possível salvar a mensagem." });
+    });
+});
 
 const port = process.env.PORT || 3000;
 
