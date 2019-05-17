@@ -177,7 +177,7 @@ app.get("/", (req, res) => {
 });
 
 app.post("/uplink", (req, res) => {
-  let deviceId = req.body.deviceId;
+  let deviceId = req.body.device;
   let data = req.body.data;
 
   let users = db.collection("users");
