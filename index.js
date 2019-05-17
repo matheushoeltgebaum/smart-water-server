@@ -175,6 +175,13 @@ app.get('/', (req, res) => {
     res.status(200).send("Welcome to the Smart Water Server!");
 });
 
+app.post('/uplink', (req, res) => {
+    let data = req.body;
+    console.log(data);
+    res.status(200).send('ok');
+});
+
+
 const port = process.env.PORT || 3000;
 
 //Instancia o servidor.
