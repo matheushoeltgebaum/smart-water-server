@@ -82,8 +82,8 @@ app.post("/credentials", (req, res) => {
           snapshot.forEach(doc => {
             //TODO: Gerar um token de acesso, para validar nas requisições futuras.
             res.status(200).json({
-              apiUser: doc.get("apiUser"),
-              apiPassword: doc.get("apiPassword"),
+              /*apiUser: doc.get("apiUser"),
+              apiPassword: doc.get("apiPassword"),*/
               deviceId: doc.get("deviceId")
             });
           });
@@ -173,16 +173,28 @@ app.post("/messages", (req, res) => {
 
   //Realiza uma query buscando as mensagens com base no id do device.
   var messagesQuery = messages.where("deviceId", "==", deviceId);
+  let currentDate = new Date();
+  let periodDate = Date.parse(
+    new Date(
+      currentDate.getFullYear() - 1,
+      currentDate.getMonth() + 1,
+      1
+    ).toDateString()
+  );
 
   messagesQuery
     .get()
     .then(snapshot => {
       if (snapshot.size > 0) {
         snapshot.forEach(doc => {
-          response.push({
-            time: doc.get("time"),
-            data: doc.get("data")
-          });
+          let time = doc.get("time") * 1000;
+          //Verifica se a mensagem está dentro do intervalo de 1 ano.
+          if (time >= periodDate) {
+            response.push({
+              time: time,
+              data: doc.get("data") / 100
+            });
+          }
         });
       }
       res.status(200).json(
