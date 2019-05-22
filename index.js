@@ -168,19 +168,21 @@ app.post("/uplink", (req, res) => {
 
 app.post("/messages", (req, res) => {
   let deviceId = req.body.deviceId;
+  let currentDate = req.body.date ? new Date(req.body.date) : new Date();
   let messages = db.collection("messages");
   let response = [];
 
   //Realiza uma query buscando as mensagens com base no id do device.
   var messagesQuery = messages.where("deviceId", "==", deviceId);
-  let currentDate = new Date();
-  let periodDate = Date.parse(
+  let initialPeriodDate = Date.parse(
     new Date(
       currentDate.getFullYear() - 1,
       currentDate.getMonth() + 1,
       1
     ).toDateString()
   );
+
+  let finalPeriodDate = Date.parse(currentDate);
 
   messagesQuery
     .get()
@@ -189,7 +191,7 @@ app.post("/messages", (req, res) => {
         snapshot.forEach(doc => {
           let time = doc.get("time") * 1000;
           //Verifica se a mensagem está dentro do intervalo de 1 ano.
-          if (time >= periodDate) {
+          if (time >= initialPeriodDate && time <= finalPeriodDate) {
             response.push({
               time: time,
               data: doc.get("data") / 100
