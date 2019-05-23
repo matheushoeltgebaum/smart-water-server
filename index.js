@@ -166,7 +166,7 @@ app.post("/uplink", (req, res) => {
   res.status(200).send("ok");
 });
 
-app.post("/messages", (req, res) => {
+app.post("/yearlyMessages", (req, res) => {
   let deviceId = req.body.deviceId;
   let currentDate = req.body.date ? new Date(req.body.date) : new Date();
   let messages = db.collection("messages");
@@ -219,6 +219,60 @@ app.post("/messages", (req, res) => {
       });
     });
 });
+
+app.post("/monthlyMessages", (req, res) => {
+    let deviceId = req.body.deviceId;
+    let currentDate = req.body.date ? new Date(req.body.date) : new Date();
+    let messages = db.collection("messages");
+    let response = [];
+  
+    //Realiza uma query buscando as mensagens com base no id do device.
+    var messagesQuery = messages.where("deviceId", "==", deviceId);
+    let initialPeriodDate = Date.parse(
+      new Date(
+        currentDate.getFullYear(),
+        currentDate.getMonth(),
+        1
+      ).toDateString()
+    );
+  
+    let finalPeriodDate = Date.parse(currentDate);
+  
+    messagesQuery
+      .get()
+      .then(snapshot => {
+        if (snapshot.size > 0) {
+          snapshot.forEach(doc => {
+            let time = doc.get("time") * 1000;
+            //Verifica se a mensagem está dentro do intervalo de 1 ano.
+            if (time >= initialPeriodDate && time <= finalPeriodDate) {
+              response.push({
+                time: time,
+                data: doc.get("data") / 100
+              });
+            }
+          });
+        }
+        res.status(200).json(
+          response.sort((a, b) => {
+            if (a.time < b.time) {
+              return -1;
+            }
+            if (a.time > b.time) {
+              return 1;
+            }
+  
+            return 0;
+          })
+        );
+      })
+      .catch(err => {
+        console.log("Error getting messages from device.", err);
+        res.status(500).json({
+          error: "Não foi possível buscar as mensagens do dispositivo informado"
+        });
+      });
+  });
 
 const port = process.env.PORT || 3000;
 
