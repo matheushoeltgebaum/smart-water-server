@@ -1,9 +1,11 @@
 const express = require("express"),
   admin = require("firebase-admin"),
   http = require("http"),
-  axios = require("axios");
+  jwt = require('jsonwebtoken'),
+  middleware = require('./middleware');
 
 require("dotenv").config();
+let secret = process.env.SECRET;
 
 admin.initializeApp({
   credential: admin.credential.cert({
@@ -31,7 +33,7 @@ app.use(function(req, res, next) {
   res.header("Access-Control-Allow-Origin", "*");
   res.header(
     "Access-Control-Allow-Headers",
-    "Origin, X-Requested-With, Content-Type, Accept"
+    "Origin, X-Requested-With, Content-Type, Accept, Authorization"
   );
   next();
 });
@@ -39,28 +41,9 @@ app.use(function(req, res, next) {
 //Carrega o database.
 let db = admin.firestore();
 
-const sigfoxApiUrl = "https://api.sigfox.com";
-app.post("/sigfoxDevice", (req, res) => {
-  let auth = req.body.auth;
-
-  //Realiza a requisição para o Sigfox, buscando o device vinculado a conta informada.
-  axios
-    .get(sigfoxApiUrl + "/v2/devices?limit=1", {
-      headers: {
-        Authorization: "Basic " + auth
-      }
-    })
-    .then(resp => {
-      var data = resp.data;
-      res.status(200).json(data);
-    })
-    .catch(err => {
-      console.log(err);
-      res.status(500).json({
-        error: "Não foi possível encontrar devices para a conta informada."
-      });
-    });
-});
+app.get("/", (req, res) => {
+    res.status(200).send("Welcome to the Smart Water Server!");
+  });
 
 app.post("/credentials", (req, res) => {
   let username = req.body.login;
@@ -80,11 +63,12 @@ app.post("/credentials", (req, res) => {
       .then(snapshot => {
         if (snapshot.size > 0) {
           snapshot.forEach(doc => {
-            //TODO: Gerar um token de acesso, para validar nas requisições futuras.
+            let token = jwt.sign({username: username}, secret, {
+                expiresIn: '3h'
+            });
             res.status(200).json({
-              /*apiUser: doc.get("apiUser"),
-              apiPassword: doc.get("apiPassword"),*/
-              deviceId: doc.get("deviceId")
+              deviceId: doc.get("deviceId"),
+              token: token
             });
           });
         } else {
@@ -99,55 +83,7 @@ app.post("/credentials", (req, res) => {
   }
 });
 
-app.post("/token", (req, res) => {
-  let username = req.body.login;
-  let password = req.body.password;
-
-  if (username && password) {
-    let users = db.collection("users");
-
-    //Realiza uma query buscando o usuário pelo nome do usuário e senha da requisição.
-    var userQuery = users
-      .where("username", "==", username)
-      .where("password", "==", password)
-      .limit(1);
-
-    userQuery
-      .get()
-      .then(snapshot => {
-        if (snapshot.size > 0) {
-          snapshot.forEach(doc => {
-            //Gera o token de acesso para o sistema
-            admin
-              .auth()
-              .createCustomToken(doc.id)
-              .then(function(token) {
-                res.status(200).json({ token: token });
-              })
-              .catch(err => {
-                //console.log(err);
-                res
-                  .status(500)
-                  .json({ error: "Erro ao gerar token de acesso." });
-              });
-          });
-        } else {
-          res.status(401).json({ error: "Usuário ou senha incorretos." });
-        }
-      })
-      .catch(err => {
-        console.log("Error getting documents", err);
-      });
-  } else {
-    res.status(400).json({ error: "Usuário ou senha não informados." });
-  }
-});
-
-app.get("/", (req, res) => {
-  res.status(200).send("Welcome to the Smart Water Server!");
-});
-
-app.post("/uplink", (req, res) => {
+app.post("/uplink", middleware.checkToken, (req, res) => {
   let deviceId = req.body.device;
   let data = req.body.data;
   let time = req.body.time;
@@ -166,7 +102,7 @@ app.post("/uplink", (req, res) => {
   res.status(200).send("ok");
 });
 
-app.post("/yearlyMessages", (req, res) => {
+app.post("/yearlyMessages", middleware.checkToken, (req, res) => {
   let deviceId = req.body.deviceId;
   let currentDate = req.body.date ? new Date(req.body.date) : new Date();
   let messages = db.collection("messages");
@@ -182,7 +118,11 @@ app.post("/yearlyMessages", (req, res) => {
     ).toDateString()
   );
 
-  let finalPeriodDate = Date.parse(currentDate);
+  let finalPeriodDate = new Date(
+    currentDate.getFullYear(),
+    currentDate.getMonth() + 1,
+    0
+  );
 
   messagesQuery
     .get()
@@ -220,63 +160,67 @@ app.post("/yearlyMessages", (req, res) => {
     });
 });
 
-app.post("/monthlyMessages", (req, res) => {
-    let deviceId = req.body.deviceId;
-    let currentDate = req.body.date ? new Date(req.body.date) : new Date();
-    let messages = db.collection("messages");
-    let response = [];
-  
-    //Realiza uma query buscando as mensagens com base no id do device.
-    var messagesQuery = messages.where("deviceId", "==", deviceId);
-    let initialPeriodDate = Date.parse(
-      new Date(
-        currentDate.getFullYear(),
-        currentDate.getMonth(),
-        1
-      ).toDateString()
-    );
-  
-    let finalPeriodDate = Date.parse(currentDate);
-  
-    messagesQuery
-      .get()
-      .then(snapshot => {
-        if (snapshot.size > 0) {
-          snapshot.forEach(doc => {
-            let time = doc.get("time") * 1000;
-            //Verifica se a mensagem está dentro do intervalo de 1 ano.
-            if (time >= initialPeriodDate && time <= finalPeriodDate) {
-              response.push({
-                time: time,
-                data: doc.get("data") / 100
-              });
-            }
-          });
-        }
-        res.status(200).json(
-          response.sort((a, b) => {
-            if (a.time < b.time) {
-              return -1;
-            }
-            if (a.time > b.time) {
-              return 1;
-            }
-  
-            return 0;
-          })
-        );
-      })
-      .catch(err => {
-        console.log("Error getting messages from device.", err);
-        res.status(500).json({
-          error: "Não foi possível buscar as mensagens do dispositivo informado"
+app.post("/monthlyMessages", middleware.checkToken, (req, res) => {
+  let deviceId = req.body.deviceId;
+  let currentDate = req.body.date ? new Date(req.body.date) : new Date();
+  let messages = db.collection("messages");
+  let response = [];
+
+  //Realiza uma query buscando as mensagens com base no id do device.
+  var messagesQuery = messages.where("deviceId", "==", deviceId);
+  let initialPeriodDate = Date.parse(
+    new Date(
+      currentDate.getFullYear(),
+      currentDate.getMonth(),
+      1
+    ).toDateString()
+  );
+
+  let finalPeriodDate = new Date(
+    currentDate.getFullYear(),
+    currentDate.getMonth() + 1,
+    0
+  );
+
+  messagesQuery
+    .get()
+    .then(snapshot => {
+      if (snapshot.size > 0) {
+        snapshot.forEach(doc => {
+          let time = doc.get("time") * 1000;
+          //Verifica se a mensagem está dentro do intervalo de 1 ano.
+          if (time >= initialPeriodDate && time <= finalPeriodDate) {
+            response.push({
+              time: time,
+              data: doc.get("data") / 100
+            });
+          }
         });
+      }
+      res.status(200).json(
+        response.sort((a, b) => {
+          if (a.time < b.time) {
+            return -1;
+          }
+          if (a.time > b.time) {
+            return 1;
+          }
+
+          return 0;
+        })
+      );
+    })
+    .catch(err => {
+      console.log("Error getting messages from device.", err);
+      res.status(500).json({
+        error: "Não foi possível buscar as mensagens do dispositivo informado"
       });
-  });
+    });
+});
 
 const port = process.env.PORT || 3000;
 
 //Instancia o servidor.
 http.createServer(app).listen(port, function(err) {
-  console.log("listening in http://localhost:" + port);
+  console.log("Server listening on port: " + port);
 });
