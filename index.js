@@ -130,6 +130,8 @@ app.post("/yearlyMessages", middleware.checkToken, (req, res) => {
       if (snapshot.size > 0) {
         snapshot.forEach(doc => {
           let time = doc.get("time") * 1000;
+		  //Pega apenas o dia, mês e ano da data (desconsiderando tempo).
+		  time = Date.parse(new Date(time).toDateString());
           //Verifica se a mensagem está dentro do intervalo de 1 ano.
           if (time >= initialPeriodDate && time <= finalPeriodDate) {
             response.push({
@@ -188,6 +190,8 @@ app.post("/monthlyMessages", middleware.checkToken, (req, res) => {
       if (snapshot.size > 0) {
         snapshot.forEach(doc => {
           let time = doc.get("time") * 1000;
+		  //Pega apenas o dia, mês e ano da data (desconsiderando tempo).
+		  time = Date.parse(new Date(time).toDateString());
           //Verifica se a mensagem está dentro do intervalo de 1 ano.
           if (time >= initialPeriodDate && time <= finalPeriodDate) {
             response.push({
