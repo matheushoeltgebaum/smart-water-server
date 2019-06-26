@@ -98,11 +98,14 @@ app.post("/uplink", middleware.checkToken, (req, res) => {
     data: Number(data),
     time: Number(time)
   });
+  
+  var result = {};
+  
+  result[deviceId] = {
+	  "downlinkData": "00"
+  };
 
-  res.status(200).json({
-	  "deviceId": deviceId,
-	  "downlinkData": 00
-  });
+  res.status(200).json(result);
 });
 
 app.post("/yearlyMessages", middleware.checkToken, (req, res) => {
