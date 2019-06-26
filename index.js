@@ -99,7 +99,10 @@ app.post("/uplink", middleware.checkToken, (req, res) => {
     time: Number(time)
   });
 
-  res.status(200).send("ok");
+  res.status(200).json({
+	  "deviceId": deviceId,
+	  "downlinkData": 00
+  });
 });
 
 app.post("/yearlyMessages", middleware.checkToken, (req, res) => {
